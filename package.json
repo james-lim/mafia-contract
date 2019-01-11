@@ -53,5 +53,8 @@
     "singleQuote": true,
     "tabWidth": 2,
     "printWidth": 80
+  },
+  "dependencies": {
+    "merklux": "^0.2.0"
   }
 }
