@@ -41,10 +41,15 @@ module.exports = {
       network_id: '*' // eslint-disable-line camelcase
     }
   },
-  solc: {
-    optimizer: {
-      enabled: true,
-      runs: 200
+  compilers: {
+    solc: {
+      version: '0.4.25',
+      settings: {
+        optimizer: {
+          enabled: true,
+          runs: 200
+        }
+      }
     }
   },
   mocha: {
