@@ -1,6 +1,8 @@
 pragma solidity ^0.4.24;
 
-contract ParticipateReducer {
+import "merklux/contracts/MerkluxReducer.sol";
+
+contract ParticipateReducer is MerkluxReducer {
     function reduce(
         IStateTree _tree,
         address _from,
@@ -8,26 +10,39 @@ contract ParticipateReducer {
     ) public returns (
         bytes memory _encodedPairs
     ) {
-        // 1. Read param
-        address user = _encodedParams.toRlpItem().toAddress();
+        // Read stored values
+        bytes memory _encodedParticipants = _tree.read('participants');
 
-        // 2. Read stored values
-        RLPItem[] memory encodedAddress = _tree.get('participants').toRlpItem().toList();
+        // Declare an array of address for participants
+        address[] memory participants;
 
-        // 3. calculate
-        bytes[] participants = new bytes[](encodedAddress.length + 1);
-        for (uint i = 0; i < participants.length; i++) {
-           if (i < participants.length - 1) {
-              participants[i] = encodedAddress.toBytes();
-              require(participants[i] != abi.encodePacked(user));
-           } else {
-              participants[i] = abi.encodePacked(user);
-           }
+        if (_encodedParticipants.length == 0) {
+            // When a stored value is null
+            participants = new address[](1);
+            participants[0] = _from;
+        } else {
+            // When a stored value is non-null, convert stored value to rlp item
+            RLPReader.RLPItem[] memory encodedAddress = _encodedParticipants.toRlpItem().toList();
+            participants = new address[](encodedAddress.length + 1);
+            for (uint i = 0; i < participants.length; i++) {
+                if (i < participants.length - 1) {
+                    participants[i] = encodedAddress[i].toAddress();
+                    require(participants[i] != _from);
+                } else {
+                    participants[i] = _from;
+                }
+            }
         }
 
-        // 4. encode
+        // enocde address array to bytes array
+        bytes[] memory bytesToEncode = new bytes[](participants.length);
+        for (i = 0; i < participants.length; i++) {
+            bytesToEncode[i] = RLPEncode.encodeAddress(participants[i]);
+        }
+
+        // encode the array of bytes to bytes
         ReducerUtil.RlpData memory pairsToReturn;
-        pairsToReturn = pairsToReturn.addBytes('participants', participants.encodeList());
+        pairsToReturn = pairsToReturn.addBytes('participants', RLPEncode.encodeList(bytesToEncode));
         return pairsToReturn.encode();
     }
-  }
+}

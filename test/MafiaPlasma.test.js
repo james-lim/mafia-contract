@@ -3,11 +3,13 @@ require('chai')
   .use(require('chai-as-promised'))
   .use(require('chai-bignumber')(BigNumber))
   .should();
-
-const MerkluxChain = artifacts.require('MerkluxChain');
-const MerkluxStore = artifacts.require('MerkluxStore');
-const MerkluxFactory = artifacts.require('MerkluxFactory');
+const MafiaPlasma = artifacts.require('MafiaPlasma');
+const MafiaStore = artifacts.require('MafiaStore');
+const MafiaFactory = artifacts.require('MafiaFactory');
+const ParticipateReducer = artifacts.require('ParticipateReducer');
 const { PlasmaState } = require('../sampleState');
+const rlp = require('rlp');
+const rlpEncode = data => '0x' + rlp.encode(data).toString('hex');
 
 // (function(){
 //   Object.prototype.isAddress = function(object){
@@ -20,19 +22,28 @@ const { PlasmaState } = require('../sampleState');
 // })()
 
 contract('Mafia PlasmaState', accounts => {
-  const [owner, operator] = accounts;
+  const [owner, operator, user] = accounts;
 
   let mafiaPlasma;
-  let mafiaState;
+  let mafiaStore;
   beforeEach(async function() {
-    let deployed = await initiateChain(operator);
-    mafiaPlasma = await MerkluxChain.at(deployed.chain);
-    mafiaState = await MerkluxStore.at(deployed.store);
+    let deployed = await initiateChain('Mafia', operator);
+    mafiaPlasma = await MafiaPlasma.at(deployed.chain);
+    mafiaStore = await MafiaStore.at(deployed.store);
   });
 
   describe('', function() {
     it("PlasmaState['turn'].should.be.a('number')", async () => {});
-    it("PlasmaState[`participants`].should.be.a('array of address')", async () => {});
+    it.only("PlasmaState[`participants`].should.be.a('array of address')", async () => {
+      await deployReducer(
+        mafiaPlasma,
+        'participate',
+        ParticipateReducer.bytecode,
+        operator
+      );
+      await dispatch(mafiaPlasma, 'participate', '0x', operator, user);
+      // console.log(await mafiaStore.get('participants'))
+    });
     it("PlasmaState[`role-${address}}`].should.be.a('string')", async () => {});
     it("PlasmaState[`join-${address}`].should.be.a('bool')", async () => {});
     it("PlasmaState[`alive-${address}`].should.be.a('bool')", async () => {});
@@ -45,20 +56,58 @@ contract('Mafia PlasmaState', accounts => {
   });
 });
 
-const initiateChain = async operator => {
-  const factory = await MerkluxFactory.new(
+const initiateChain = async (appName, operator) => {
+  const factory = await MafiaFactory.new(
     'V1',
-    web3.utils.sha3(MerkluxChain.bytecode),
-    web3.utils.sha3(MerkluxStore.bytecode)
+    web3.utils.sha3(MafiaPlasma.bytecode),
+    web3.utils.sha3(MafiaStore.bytecode)
   );
-  await factory.createApp('BalanceIncreaser', { from: operator });
-  await factory.deployChain('BalanceIncreaser', MerkluxChain.bytecode, {
+  await factory.createApp(appName, { from: operator });
+  await factory.deployChain(appName, MafiaPlasma.bytecode, {
     from: operator
   });
-  await factory.deployStore('BalanceIncreaser', MerkluxStore.bytecode, {
+  await factory.deployStore(appName, MafiaStore.bytecode, {
     from: operator
   });
-  await factory.complete('BalanceIncreaser', { from: operator });
-  const { chain, store } = await factory.getMerklux('BalanceIncreaser');
+  await factory.complete(appName, { from: operator });
+  const { chain, store } = await factory.getMerklux(appName);
   return { chain, store };
+};
+
+let deployReducer = async (chain, actionName, bytecode, operator) => {
+  let { actionHash, prevBlockHash, nonce } = await chain.makeAction(
+    actionName,
+    bytecode,
+    true,
+    { from: operator }
+  );
+  let signature = await web3.eth.sign(actionHash, operator);
+  await chain.dispatch(
+    actionName,
+    bytecode,
+    prevBlockHash,
+    nonce.toNumber(),
+    true,
+    signature,
+    { from: operator }
+  );
+};
+
+let dispatch = async (chain, actionName, params, operator, user) => {
+  let { actionHash, prevBlockHash, nonce } = await chain.makeAction(
+    actionName,
+    rlpEncode(params),
+    false,
+    { from: user }
+  );
+  let signature = await web3.eth.sign(actionHash, user);
+  let result = await chain.dispatch(
+    actionName,
+    rlpEncode(params),
+    prevBlockHash,
+    nonce.toNumber(),
+    false,
+    signature,
+    { from: operator }
+  );
 };
