@@ -42,7 +42,11 @@ contract('Mafia PlasmaState', accounts => {
         operator
       );
       await dispatch(mafiaPlasma, 'participate', '0x', operator, user);
-      // console.log(await mafiaStore.get('participants'))
+      let encodedArray = await mafiaStore.get(web3.utils.toHex('participants'));
+      let participants = rlp.decode(encodedArray);
+      user
+        .toLowerCase()
+        .should.equal('0x' + participants[0].toString('hex').toLowerCase());
     });
     it("PlasmaState[`role-${address}}`].should.be.a('string')", async () => {});
     it("PlasmaState[`join-${address}`].should.be.a('bool')", async () => {});
