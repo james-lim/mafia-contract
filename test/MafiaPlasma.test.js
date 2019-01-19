@@ -7,6 +7,7 @@ const MafiaPlasma = artifacts.require('MafiaPlasma');
 const MafiaStore = artifacts.require('MafiaStore');
 const MafiaFactory = artifacts.require('MafiaFactory');
 const ParticipateReducer = artifacts.require('ParticipateReducer');
+const ConfigureReducer = artifacts.require('ConfigureReducer');
 const { PlasmaState } = require('../sampleState');
 const rlp = require('rlp');
 const rlpEncode = data => '0x' + rlp.encode(data).toString('hex');
@@ -34,7 +35,7 @@ contract('Mafia PlasmaState', accounts => {
 
   describe('', function() {
     it("PlasmaState['turn'].should.be.a('number')", async () => {});
-    it.only("PlasmaState[`participants`].should.be.a('array of address')", async () => {
+    it("PlasmaState[`participants`].should.be.a('array of address')", async () => {
       await deployReducer(
         mafiaPlasma,
         'participate',
@@ -57,6 +58,60 @@ contract('Mafia PlasmaState', accounts => {
     it("PlasmaState[`choice-of-mafia-${address}-${turn}`].should.be.a('address')", async () => {});
     it("PlasmaState[`choice-of-police-${address}-${turn}`].should.be.a('address')", async () => {});
     it("PlasmaState[`choice-of-doctor-${address}-${turn}`].should.be.a('address')", async () => {});
+    context('After dispatch configure action', async () => {
+      const params = [10, 12, 13, 20, 13, 18, 17];
+      beforeEach(async () => {
+        await deployReducer(
+          mafiaPlasma,
+          'configure',
+          ConfigureReducer.bytecode,
+          operator
+        );
+        await dispatch(mafiaPlasma, 'configure', params, operator, user);
+      });
+      it("PlasmaState[`c-init`].should.be.a('bool')", async () => {
+        let encodedVal = await mafiaStore.get(web3.utils.toHex('c-init'));
+        rlp
+          .decode(encodedVal)
+          .toString('hex')
+          .should.equal('01');
+      });
+      it("PlasmaState[`c-stake`].should.be.a('uint')", async () => {
+        let encodedVal = await mafiaStore.get(web3.utils.toHex('c-stake'));
+        let val = '0x' + rlp.decode(encodedVal).toString('hex');
+        web3.utils.hexToNumber(val).should.equal(params[0]);
+      });
+      it("PlasmaState[`c-days`].should.be.a('uint')", async () => {
+        let encodedVal = await mafiaStore.get(web3.utils.toHex('c-days'));
+        let val = '0x' + rlp.decode(encodedVal).toString('hex');
+        web3.utils.hexToNumber(val).should.equal(params[1]);
+      });
+      it("PlasmaState[`c-total`].should.be.a('uint')", async () => {
+        let encodedVal = await mafiaStore.get(web3.utils.toHex('c-total'));
+        let val = '0x' + rlp.decode(encodedVal).toString('hex');
+        web3.utils.hexToNumber(val).should.equal(params[2]);
+      });
+      it("PlasmaState[`c-mafia`].should.be.a('uint')", async () => {
+        let encodedVal = await mafiaStore.get(web3.utils.toHex('c-mafia'));
+        let val = '0x' + rlp.decode(encodedVal).toString('hex');
+        web3.utils.hexToNumber(val).should.equal(params[3]);
+      });
+      it("PlasmaState[`c-doctor`].should.be.a('uint')", async () => {
+        let encodedVal = await mafiaStore.get(web3.utils.toHex('c-doctor'));
+        let val = '0x' + rlp.decode(encodedVal).toString('hex');
+        web3.utils.hexToNumber(val).should.equal(params[4]);
+      });
+      it("PlasmaState[`c-police`].should.be.a('uint')", async () => {
+        let encodedVal = await mafiaStore.get(web3.utils.toHex('c-police'));
+        let val = '0x' + rlp.decode(encodedVal).toString('hex');
+        web3.utils.hexToNumber(val).should.equal(params[5]);
+      });
+      it("PlasmaState[`c-challenge`].should.be.a('uint')", async () => {
+        let encodedVal = await mafiaStore.get(web3.utils.toHex('c-challenge'));
+        let val = '0x' + rlp.decode(encodedVal).toString('hex');
+        web3.utils.hexToNumber(val).should.equal(params[6]);
+      });
+    });
   });
 });
 
